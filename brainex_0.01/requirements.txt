@@ -1,0 +1,7 @@
+Flask
+gunicorn
+google-cloud-firestore
+python-dotenv
+langchain
+langgraph
+pydantic
