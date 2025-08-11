@@ -1,87 +1,288 @@
-### requirements.txt
-This file lists all the required Python packages for your project. Based on the provided code, here’s a sample `requirements.txt`:
+# YouTube Shorts Analysis API 🎬
 
-```plaintext
-Flask==2.2.2
-Flask-Cors==3.0.10
-google-api-python-client==2.39.0
-firebase-admin==5.2.0
-python-dotenv==0.20.0
-reportlab==3.6.11
-librosa==0.9.2
-numpy==1.23.5
-yt-dlp==0.18.3
-transformers==4.21.1
-pydub==0.25.1
-moviepy==1.0.3
-pydrive==1.3.1
-langgraph==0.1.0  # Adjust this version based on your actual usage
+A Flask-based REST API for analyzing YouTube Shorts trends and generating comprehensive reports. This API provides asynchronous job processing, PDF report generation, and comprehensive trend analysis capabilities.
+
+## Features ✨
+
+- **Asynchronous Analysis**: Submit analysis jobs and check status without blocking
+- **Synchronous Analysis**: Direct analysis for quick requests
+- **PDF Reports**: Automatically generated downloadable trend reports
+- **Job Management**: Full CRUD operations for analysis jobs
+- **Health Monitoring**: Built-in health checks and logging
+- **CORS Support**: Ready for frontend integration
+- **Flexible Queries**: Support for various analysis types and filters
+
+## Installation 🚀
+
+### Prerequisites
+
+- Python 3.7+
+- pip package manager
+
+### Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <your-repository-url>
+   cd youtube-shorts-analysis
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install flask flask-cors
+   # Add other dependencies as needed for ytwatch module
+   ```
+
+3. **Ensure ytwatch module is available**
+   Make sure your `ytwatch.py` file (containing `YouTubeTrendsWorkflow`) is in the same directory.
+
+4. **Run the API**
+   ```bash
+   python ytwatch-api.py
+   ```
+
+The API will start on `http://localhost:8080`
+
+## API Endpoints 📡
+
+### Core Analysis Endpoints
+
+#### `POST /analyze`
+Start an asynchronous analysis job.
+
+**Request:**
+```json
+{
+  "request": "Get 5 trends from US"
+}
 ```
 
-Make sure to adjust the versions according to your project's requirements and compatibility.
-
-### Dockerfile
-This file defines the environment in which your application will run. Below is a sample `Dockerfile` for your `ytwatch-api` project:
-
-```dockerfile
-# Use the official Python image from the Docker Hub
-FROM python:3.9-slim
-
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the requirements file into the container
-COPY requirements.txt .
-
-# Install the dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the entire project into the container
-COPY . .
-
-# Expose the port the app runs on
-EXPOSE 5000
-
-# Command to run the application
-CMD ["python", "ytwatch-api.py"]
+**Response:**
+```json
+{
+  "job_id": "uuid-string",
+  "status": "pending",
+  "message": "Analysis job started",
+  "request": "Get 5 trends from US",
+  "created_at": "2025-01-01T12:00:00"
+}
 ```
 
-### .dockerignore
-This file specifies files and directories that should be ignored by Docker when building the image. Here’s a sample `.dockerignore` file:
+#### `POST /analyze/sync`
+Run analysis synchronously (for testing/small jobs).
 
-```plaintext
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-*.db
-*.sqlite3
-*.log
-*.env
-*.git
-*.gitignore
-*.DS_Store
-*.egg-info
-*.egg
-*.whl
-temp/
-tmp/
+**Request:**
+```json
+{
+  "request": "Get 3 comedy shorts from Japan"
+}
 ```
 
-### Summary
-1. **requirements.txt**: Lists all the necessary Python packages.
-2. **Dockerfile**: Defines how to build the Docker image for your application.
-3. **.dockerignore**: Specifies files and directories to exclude from the Docker context.
+**Response:**
+```json
+{
+  "status": "completed",
+  "request": "Get 3 comedy shorts from Japan",
+  "result": { /* analysis results */ },
+  "completed_at": "2025-01-01T12:05:00"
+}
+```
 
-### Building and Running the Docker Container
-To build and run your Docker container, you can use the following commands in your terminal:
+### Job Management Endpoints
+
+#### `GET /jobs/<job_id>`
+Get job status and basic information.
+
+**Response:**
+```json
+{
+  "id": "job-uuid",
+  "request": "Get 5 trends from US",
+  "status": "completed",
+  "created_at": "2025-01-01T12:00:00",
+  "completed_at": "2025-01-01T12:05:00",
+  "summary": {
+    "analysis_mode": "trending",
+    "region_code": "US",
+    "videos_analyzed": 5,
+    "pdf_available": true,
+    "from_cache": false
+  }
+}
+```
+
+#### `GET /jobs/<job_id>/results`
+Get detailed analysis results.
+
+#### `GET /jobs/<job_id>/download`
+Download PDF report for completed job.
+
+#### `GET /jobs`
+List all jobs with optional filtering.
+
+**Query Parameters:**
+- `status`: Filter by status (pending, running, completed, failed)
+- `limit`: Limit number of results
+
+#### `DELETE /jobs/<job_id>`
+Delete job data and associated files.
+
+#### `POST /jobs/<job_id>/cancel`
+Cancel a running job.
+
+### Utility Endpoints
+
+#### `GET /`
+API documentation and status.
+
+#### `GET /health`
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "workflow_initialized": true,
+  "active_jobs": 2,
+  "total_jobs": 10,
+  "timestamp": "2025-01-01T12:00:00"
+}
+```
+
+## Supported Analysis Types 🎯
+
+The API supports various types of analysis requests:
+
+- **Trending Analysis**: `"Get 5 trends from US"`
+- **Specific Video Analysis**: `"Analyze this video: youtube.com/shorts/ABC123"`
+- **Category-based**: `"Show me 3 comedy shorts from Japan"`
+- **Time-based**: `"Find trending music videos last 2 hours"`
+- **Hashtag Analysis**: `"Get 7 #dance videos from Germany"`
+
+## Usage Examples 💡
+
+### Basic Usage with curl
 
 ```bash
-# Build the Docker image
-docker build -t ytwatch-api .
+# Start an analysis job
+curl -X POST http://localhost:8080/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"request": "Get 5 trends from US"}'
 
-# Run the Docker container
-docker run -p 5000:5000 ytwatch-api
+# Check job status
+curl http://localhost:8080/jobs/<job_id>
+
+# Download PDF report
+curl -O http://localhost:8080/jobs/<job_id>/download
+
+# List all jobs
+curl http://localhost:8080/jobs
+
+# Health check
+curl http://localhost:8080/health
 ```
 
-Make sure you have Docker installed and running on your machine before executing these commands.
+### Python Client Example
+
+```python
+import requests
+import time
+
+API_BASE = "http://localhost:8080"
+
+# Start analysis
+response = requests.post(f"{API_BASE}/analyze", json={
+    "request": "Get 5 trending videos from US"
+})
+job_data = response.json()
+job_id = job_data["job_id"]
+
+# Poll for completion
+while True:
+    status_response = requests.get(f"{API_BASE}/jobs/{job_id}")
+    status = status_response.json()
+    
+    if status["status"] == "completed":
+        print("Analysis completed!")
+        break
+    elif status["status"] == "failed":
+        print("Analysis failed:", status.get("error"))
+        break
+    
+    print("Still running...")
+    time.sleep(5)
+
+# Download PDF report
+pdf_response = requests.get(f"{API_BASE}/jobs/{job_id}/download")
+with open("report.pdf", "wb") as f:
+    f.write(pdf_response.content)
+```
+
+// Usage
+analyzeYouTubeShorts('Get 5 trends from US')
+    .then(result => console.log('Analysis completed:', result))
+    .catch(error => console.error('Analysis failed:', error));
+```
+
+## Job Status Flow 🔄
+
+```
+PENDING → RUNNING → COMPLETED ✅
+    ↓        ↓
+   FAILED   FAILED ❌
+```
+
+- **PENDING**: Job created, waiting to start
+- **RUNNING**: Analysis in progress
+- **COMPLETED**: Analysis finished successfully
+- **FAILED**: Analysis failed or was cancelled
+
+
+```
+
+### Logging
+
+The API uses Python's logging module. Configure logging level:
+
+```python
+logging.basicConfig(level=logging.DEBUG)  # For detailed logs
+```
+
+## Error Handling 🚨
+
+The API returns consistent error responses:
+
+```json
+{
+  "error": "Description of what went wrong",
+  "status": "failed"
+}
+```
+
+Common HTTP status codes:
+- `200`: Success
+- `202`: Accepted (async job started)
+- `400`: Bad Request (invalid input)
+- `404`: Not Found (job/endpoint doesn't exist)
+- `500`: Internal Server Error
+
+
+## Troubleshooting 🔧
+
+### Common Issues
+
+1. **Workflow initialization failed**
+   - Check that `ytwatch.py` and `YouTubeTrendsWorkflow` are available
+   - Verify all dependencies are installed
+
+2. **PDF download fails**
+   - Ensure write permissions in the working directory
+   - Check if the analysis actually completed successfully
+
+3. **Jobs stuck in "running" status**
+   - Check logs for errors in the background thread
+   - Restart the API to clear stuck jobs
+
+4. **CORS issues**
+   - CORS is enabled by default for all origins
+   - Modify CORS settings in the Flask app if needed
